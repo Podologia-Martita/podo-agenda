@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProfessionalSelect from '../components/ProfessionalSelect';
 import ServiceSelect from '../components/ServiceSelect';
 import AvailableSlots from '../components/AvailableSlots';
@@ -11,12 +11,21 @@ export default function Home() {
   const [selectedSlot, setSelectedSlot] = useState('');
   const [clientName, setClientName] = useState('');
 
+  // 🔹 Capturar errores globales para móviles
+  useEffect(() => {
+    window.onerror = (msg, url, lineNo, columnNo, error) => {
+      alert(`Error: ${msg}\nArchivo: ${url}\nLinea: ${lineNo}`);
+      return false;
+    };
+  }, []);
+
   const bookSlot = async () => {
-    if (!professionalId || !serviceName || !selectedSlot || !clientName)
+    if (!professionalId || !serviceName || !selectedSlot || !clientName) {
       return alert('Completa todos los campos');
+    }
 
     const { data, error } = await supabase
-      .from('bookings')
+      .from('public.bookings') // esquema corregido
       .insert([{
         professional_id: professionalId,
         service: serviceName,
@@ -29,15 +38,25 @@ export default function Home() {
   };
 
   return (
-    <div>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Reserva tu cita</h1>
 
       <ProfessionalSelect onSelect={setProfessionalId} />
-      {professionalId && <ServiceSelect professionalId={professionalId} onSelect={setServiceName} />}
+
+      {professionalId && (
+        <ServiceSelect professionalId={professionalId} onSelect={setServiceName} />
+      )}
 
       {professionalId && serviceName && (
         <>
-          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+          <div style={{ margin: '10px 0' }}>
+            <label>Selecciona fecha: </label>
+            <input 
+              type="date" 
+              value={selectedDate} 
+              onChange={e => setSelectedDate(e.target.value)} 
+            />
+          </div>
           <AvailableSlots 
             professionalId={professionalId} 
             serviceName={serviceName} 
@@ -48,12 +67,13 @@ export default function Home() {
       )}
 
       {selectedSlot && (
-        <div>
+        <div style={{ marginTop: '10px' }}>
           <input 
             type="text" 
             placeholder="Tu nombre" 
             value={clientName} 
             onChange={e => setClientName(e.target.value)} 
+            style={{ marginRight: '5px' }}
           />
           <button onClick={bookSlot}>Reservar</button>
         </div>
