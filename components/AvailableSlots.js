@@ -3,36 +3,65 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function AvailableSlots({ professionalId, serviceName, date, onSelect }) {
   const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!professionalId || !serviceName || !date) return;
 
     const fetchSlots = async () => {
-      let { data, error } = await supabase
-        .rpc('available_slots_service', { 
-          p_professional_id: professionalId, 
-          p_service_name: serviceName, 
-          p_date: date 
-        });
-      if (!error) setSlots(data);
+      // Obtener la duración del servicio
+      const { data: servicesData, error: serviceError } = await supabase
+        .from('public.services')
+        .select('duration_minutes')
+        .eq('professional_id', professionalId)
+        .eq('name', serviceName)
+        .single();
+
+      if (serviceError || !servicesData) {
+        console.log("Error al obtener duración:", serviceError);
+        setSlots([]);
+        setLoading(false);
+        return;
+      }
+
+      const serviceDuration = servicesData.duration_minutes;
+      const startHour = 10;
+      const endHour = 18;
+      const bookedSlots = [];
+
+      // Traer reservas existentes
+      const { data: bookingsData } = await supabase
+        .from('public.bookings')
+        .select('time')
+        .eq('professional_id', professionalId);
+
+      if (bookingsData) {
+        bookingsData.forEach(b => bookedSlots.push(new Date(b.time).getHours()));
+      }
+
+      const available = [];
+      for (let hour = startHour; hour < endHour; hour++) {
+        if (!bookedSlots.includes(hour)) {
+          available.push(`${hour.toString().padStart(2,'0')}:00`);
+        }
+      }
+
+      setSlots(available);
+      setLoading(false);
     };
+
     fetchSlots();
   }, [professionalId, serviceName, date]);
 
+  if (loading) return <p>Cargando horarios...</p>;
+  if (slots.length === 0) return <p>No hay horarios disponibles.</p>;
+
   return (
-    <div>
-      <h3>Horarios disponibles:</h3>
-      {slots.length === 0 && <p>No hay horarios disponibles</p>}
-      <ul>
-        {slots.map((slot, i) => (
-          <li key={i}>
-            <button onClick={() => onSelect(slot.slot_start)}>
-              {new Date(slot.slot_start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - 
-              {new Date(slot.slot_end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <select onChange={e => onSelect(e.target.value)}>
+      <option value="">Selecciona un horario</option>
+      {slots.map(s => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
   );
 }
