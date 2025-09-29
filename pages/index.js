@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProfessionalSelect from '../components/ProfessionalSelect';
 import ServiceSelect from '../components/ServiceSelect';
 import AvailableSlots from '../components/AvailableSlots';
@@ -10,6 +10,14 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [clientName, setClientName] = useState('');
+
+  // 🔹 Capturar errores en la web para smartphones
+  useEffect(() => {
+    window.onerror = (msg, url, lineNo, columnNo, error) => {
+      alert(`Error: ${msg}\nArchivo: ${url}\nLinea: ${lineNo}`);
+      return false;
+    };
+  }, []);
 
   const bookSlot = async () => {
     if (!professionalId || !serviceName || !selectedSlot || !clientName)
